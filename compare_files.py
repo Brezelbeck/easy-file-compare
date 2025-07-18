@@ -6,7 +6,6 @@
 
 # --- import necessary modules ---
 import sys
-import difflib
 
 # --- define constants ---
 BLOCK_START = "access-rule"
@@ -46,7 +45,7 @@ def compare_files(file1, file2):
     # Only consider headers present in both files
     common_headers = set(dict1.keys()).intersection(dict2.keys())
     if not common_headers:
-        print("❗ Keine gemeinsamen Blöcke gefunden!")
+        print("❗ No common blocks found!")
         return
 
     # ANSI color codes
@@ -55,54 +54,58 @@ def compare_files(file1, file2):
     RESET = '\033[0m'
     
     # Start comparison
-    print(f"Vergleiche {file1} und {file2}...")
-    markdown_lines = [f"# Vergleich: {file1} vs {file2}\n"]
+    print(f"Comparing {file1} and {file2}...")
+    markdown_lines = [f"# Comparison: {file1} vs {file2}\n"]
     for header in sorted(common_headers):
         if dict1[header] == dict2[header]:
-            print(f"identischer Block: {header}")
+            print(f"Identical block: {header}")
             # Markdown for identical blocks
-            markdown_lines.append(f"## {header}\nIdentisch\n")
+            markdown_lines.append(f"## {header}\nIdentical block\n")
         else:
-            lines1 = dict1[header].splitlines()
-            lines2 = dict2[header].splitlines()
-            diff = list(difflib.ndiff(lines1, lines2))
+            # Strip trailing and leading whitespace for fair comparison
+            lines1 = [l.rstrip('\r\n').strip() for l in dict1[header].splitlines()]
+            lines2 = [l.rstrip('\r\n').strip() for l in dict2[header].splitlines()]
+            set1 = set(lines1)
+            set2 = set(lines2)
+            only1 = [line for line in lines1 if line not in set2]
+            only2 = [line for line in lines2 if line not in set1]
             # Console output with color coding
-            print(f"\nUnterschiede im Block: {header}")
-            for line in diff:
-                if line.startswith('- '):
-                    print(f"{RED}{line}{RESET}")
-                elif line.startswith('+ '):
-                    print(f"{GREEN}{line}{RESET}")
-                elif line.startswith('? '):
-                    continue
-                else:
-                    print(line)
+            print(f"\nDifferences in block: {header}")
+            for line in only1:
+                print(f"{RED}- {line}{RESET}")
+            for line in only2:
+                print(f"{GREEN}+ {line}{RESET}")
+            if line not in only1 and line not in only2:
+                print(f"Follow the white rabbit: 🐇")
             # Markdown for differences
-            markdown_lines.append(f"## {header}\n**Unterschiede im Block:**\n")
+            markdown_lines.append(f"## {header}\n**Differences in block:**\n")
             markdown_lines.append("```diff")
-            for line in diff:
-                if not line.startswith('? '):
-                    markdown_lines.append(line)
+            for line in only1:
+                markdown_lines.append(f"- {line}")
+            for line in only2:
+                markdown_lines.append(f"+ {line}")
+            if line not in only1 and line not in only2:
+                markdown_lines.append(f"Follow the white rabbit: 🐇")
             markdown_lines.append("```")
 
     # Write the markdown output to a file
     if not markdown_lines:
-        print("❗ Keine Unterschiede gefunden!")
+        print("❗ No differences found!")
         return
-    md_filename = f"vergleich_{file1.lstrip('.\\')}_vs_{file2.lstrip('.\\')}.md"
+    md_filename = f"comparison_{file1.lstrip('.\\')}_vs_{file2.lstrip('.\\')}.md"
     try:
         with open(md_filename, "w", encoding="utf-8") as md_file:
             md_file.write("\n".join(markdown_lines))
-        print(f"\nMarkdown-Diff gespeichert als: {md_filename}")
+        print(f"\nMarkdown diff saved as: {md_filename}")
     except Exception as e:
-        print(f"Fehler beim Schreiben der Markdown-Datei: {e}")
+        print(f"Error writing markdown file: {e}")
 
 # --- main function to run the script ---
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        print("❗ Bitte zwei Dateinamen angeben!")
-        print("Beispiel: python compare_files.py datei1.txt datei2.txt")
+        print("❗ Please provide two filenames!")
+        print("Example: python compare_files.py file1.txt file2.txt")
         sys.exit(1)
 
     file1 = sys.argv[1]
